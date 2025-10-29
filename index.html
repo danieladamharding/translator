@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Toolbar Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding-top: 70px;
+        }
+
+        /* Translation Toolbar Styles */
+        #translation-toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        #translation-toolbar label {
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        #translation-toolbar select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 120px;
+        }
+
+        #translation-toolbar button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #translation-toolbar button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        #translation-toolbar button:active {
+            transform: translateY(0);
+        }
+
+        #translation-toolbar button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            color: white;
+            font-size: 13px;
+            margin-left: auto;
+        }
+
+        .api-key-input {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 250px;
+        }
+
+        /* Demo Content Styles */
+        .demo-content {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .demo-content h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .demo-content h2 {
+            color: #667eea;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .demo-content p {
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .demo-content ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .demo-content li {
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <!-- Translation Toolbar -->
+    <div id="translation-toolbar">
+        <label for="api-key">DeepL API Key:</label>
+        <input type="password" id="api-key" class="api-key-input" placeholder="Enter your DeepL API key">
+        
+        <label for="source-lang">From:</label>
+        <select id="source-lang">
+            <option value="auto">Auto-detect</option>
+            <option value="EN">English</option>
+            <option value="ES">Spanish</option>
+            <option value="FR">French</option>
+            <option value="DE">German</option>
+            <option value="IT">Italian</option>
+            <option value="PT">Portuguese</option>
+            <option value="RU">Russian</option>
+            <option value="JA">Japanese</option>
+            <option value="ZH">Chinese</option>
+        </select>
+
+        <label for="target-lang">To:</label>
+        <select id="target-lang">
+            <option value="EN-US">English (US)</option>
+            <option value="ES">Spanish</option>
+            <option value="FR">French</option>
+            <option value="DE">German</option>
+            <option value="IT">Italian</option>
+            <option value="PT-PT">Portuguese</option>
+            <option value="RU">Russian</option>
+            <option value="JA">Japanese</option>
+            <option value="ZH">Chinese (Simplified)</option>
+        </select>
+
+        <button id="translate-btn">Translate Page</button>
+        <button id="reset-btn">Reset</button>
+        
+        <span class="status-message" id="status"></span>
+    </div>
+
+    <!-- Demo Content -->
+    <div class="demo-content" id="content">
+        <h1>Welcome to the Translation Toolbar Demo</h1>
+        
+        <p>This is a demonstration of a web page translation toolbar powered by the DeepL API. You can translate the entire content of this page into multiple languages with just a few clicks.</p>
+
+        <div class="info-box">
+            <p><strong>Note:</strong> To use this toolbar, you need to enter your DeepL API key in the field above. You can get a free API key by signing up at <a href="https://www.deepl.com/pro-api" target="_blank">deepl.com/pro-api</a>.</p>
+        </div>
+
+        <h2>How It Works</h2>
+        <p>The translation toolbar extracts all text content from the page, sends it to the DeepL API for translation, and then replaces the original text with the translated version. Here's what happens:</p>
+
+        <ul>
+            <li>All text nodes in the DOM are identified and collected</li>
+            <li>Text is sent to DeepL API in batches to respect API limits</li>
+            <li>Translated text is inserted back into the same positions</li>
+            <li>The page layout and styling remain unchanged</li>
+        </ul>
+
+        <h2>Features</h2>
+        <p>This translation toolbar includes several useful features:</p>
+        <ul>
+            <li>Support for multiple languages including English, Spanish, French, German, and more</li>
+            <li>Auto-detection of source language</li>
+            <li>One-click translation of entire page content</li>
+            <li>Reset button to restore original content</li>
+            <li>Status messages to keep you informed of the translation progress</li>
+        </ul>
+
+        <h2>Technical Implementation</h2>
+        <p>This toolbar is built using vanilla JavaScript, HTML, and CSS. It uses the DeepL API's REST interface to perform translations. The implementation includes error handling, loading states, and the ability to preserve the original content for restoration.</p>
+
+        <p>The code walks through the DOM tree, identifies text nodes, and stores them along with their content. After translation, it updates each node with the corresponding translated text while maintaining the document structure.</p>
+
+        <h2>Try It Out</h2>
+        <p>Enter your DeepL API key in the toolbar above, select your target language, and click "Translate Page" to see it in action. You can always click "Reset" to restore the original English content.</p>
+    </div>
+
+    <script>
+        // Store original content for reset functionality
+        let originalContent = null;
+
+        // Get DOM elements
+        const apiKeyInput = document.getElementById('api-key');
+        const sourceLangSelect = document.getElementById('source-lang');
+        const targetLangSelect = document.getElementById('target-lang');
+        const translateBtn = document.getElementById('translate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const statusSpan = document.getElementById('status');
+        const contentDiv = document.getElementById('content');
+
+        // Save original content on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            originalContent = contentDiv.innerHTML;
+        });
+
+        // Translate button click handler
+        translateBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            
+            if (!apiKey) {
+                statusSpan.textContent = 'Please enter your DeepL API key';
+                return;
+            }
+
+            const sourceLang = sourceLangSelect.value === 'auto' ? null : sourceLangSelect.value;
+            const targetLang = targetLangSelect.value;
+
+            // Disable button and show status
+            translateBtn.disabled = true;
+            statusSpan.textContent = 'Translating...';
+
+            try {
+                await translatePage(apiKey, sourceLang, targetLang);
+                statusSpan.textContent = 'Translation complete!';
+                setTimeout(() => statusSpan.textContent = '', 3000);
+            } catch (error) {
+                statusSpan.textContent = `Error: ${error.message}`;
+                console.error('Translation error:', error);
+            } finally {
+                translateBtn.disabled = false;
+            }
+        });
+
+        // Reset button click handler
+        resetBtn.addEventListener('click', () => {
+            if (originalContent) {
+                contentDiv.innerHTML = originalContent;
+                statusSpan.textContent = 'Content restored';
+                setTimeout(() => statusSpan.textContent = '', 2000);
+            }
+        });
+
+        // Main translation function
+        async function translatePage(apiKey, sourceLang, targetLang) {
+            // Collect all text nodes
+            const textNodes = [];
+            const walker = document.createTreeWalker(
+                contentDiv,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: (node) => {
+                        // Skip empty text nodes and whitespace-only nodes
+                        if (node.textContent.trim().length === 0) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+            );
+
+            let node;
+            while (node = walker.nextNode()) {
+                textNodes.push({
+                    node: node,
+                    text: node.textContent.trim()
+                });
+            }
+
+            if (textNodes.length === 0) {
+                throw new Error('No text content found to translate');
+            }
+
+            // Combine all text for translation (DeepL can handle multiple texts)
+            const textsToTranslate = textNodes.map(item => item.text);
+
+            // Call DeepL API
+            const translations = await translateWithDeepL(apiKey, textsToTranslate, sourceLang, targetLang);
+
+            // Update DOM with translations
+            textNodes.forEach((item, index) => {
+                if (translations[index]) {
+                    item.node.textContent = translations[index];
+                }
+            });
+        }
+
+        // DeepL API call function (via Netlify Function)
+        async function translateWithDeepL(apiKey, texts, sourceLang, targetLang) {
+            // Netlify function URL - automatically works for both local and deployed
+            // Deployed: https://your-site.netlify.app/.netlify/functions/translate
+            // Local: http://localhost:8888/.netlify/functions/translate
+            
+            // Get the current origin to build the function URL
+            const origin = window.location.origin;
+            const functionUrl = `${origin}/.netlify/functions/translate`;
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    texts: texts,
+                    sourceLang: sourceLang,
+                    targetLang: targetLang,
+                    apiKey: apiKey
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `API request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.translations.map(t => t.text);
+        }
+    </script>
+</body>
+</html>
