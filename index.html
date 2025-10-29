@@ -305,6 +305,253 @@
 
     
     <script>__loadEntry()</script>
+
+    <script>
+        // Store original content and translation state
+        let originalContent = null;
+        let isTranslating = false;
+        let translationCache = new Map();
+        let observer = null;
+        let currentApiKey = null;
+        let currentSourceLang = null;
+        let currentTargetLang = null;
+
+        // Get DOM elements
+        const apiKeyInput = document.getElementById('api-key');
+        const sourceLangSelect = document.getElementById('source-lang');
+        const targetLangSelect = document.getElementById('target-lang');
+        const translateBtn = document.getElementById('translate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const statusSpan = document.getElementById('status');
+        const contentDiv = document.getElementById('content');
+
+        // Save original content on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            originalContent = contentDiv.innerHTML;
+        });
+
+        // Translate button click handler
+        translateBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            
+            if (!apiKey) {
+                statusSpan.textContent = 'Please enter your DeepL API key';
+                return;
+            }
+
+            const sourceLang = sourceLangSelect.value === 'auto' ? null : sourceLangSelect.value;
+            const targetLang = targetLangSelect.value;
+
+            // Store current settings
+            currentApiKey = apiKey;
+            currentSourceLang = sourceLang;
+            currentTargetLang = targetLang;
+            isTranslating = true;
+
+            // Disable button and show status
+            translateBtn.disabled = true;
+            statusSpan.textContent = 'Translating...';
+
+            try {
+                await translatePage(apiKey, sourceLang, targetLang);
+                statusSpan.textContent = 'Translation active - new content will auto-translate';
+                
+                // Start watching for new content
+                startContentObserver();
+            } catch (error) {
+                statusSpan.textContent = `Error: ${error.message}`;
+                console.error('Translation error:', error);
+                isTranslating = false;
+            } finally {
+                translateBtn.disabled = false;
+            }
+        });
+
+        // Reset button click handler
+        resetBtn.addEventListener('click', () => {
+            if (originalContent) {
+                contentDiv.innerHTML = originalContent;
+                statusSpan.textContent = 'Content restored';
+                translationCache.clear();
+                isTranslating = false;
+                
+                // Stop auto-translation
+                stopContentObserver();
+                
+                setTimeout(() => statusSpan.textContent = '', 2000);
+            }
+        });
+
+        // Start observing DOM changes
+        function startContentObserver() {
+            if (observer) {
+                observer.disconnect();
+            }
+
+            observer = new MutationObserver(async (mutations) => {
+                if (!isTranslating) return;
+
+                const newTextNodes = [];
+
+                for (const mutation of mutations) {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(node => {
+                            // Find all text nodes in added content
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                const walker = document.createTreeWalker(
+                                    node,
+                                    NodeFilter.SHOW_TEXT,
+                                    {
+                                        acceptNode: (n) => {
+                                            if (n.textContent.trim().length === 0) {
+                                                return NodeFilter.FILTER_REJECT;
+                                            }
+                                            return NodeFilter.FILTER_ACCEPT;
+                                        }
+                                    }
+                                );
+
+                                let textNode;
+                                while (textNode = walker.nextNode()) {
+                                    const text = textNode.textContent.trim();
+                                    if (text && !translationCache.has(text)) {
+                                        newTextNodes.push({
+                                            node: textNode,
+                                            text: text
+                                        });
+                                    }
+                                }
+                            } else if (node.nodeType === Node.TEXT_NODE) {
+                                const text = node.textContent.trim();
+                                if (text && !translationCache.has(text)) {
+                                    newTextNodes.push({
+                                        node: node,
+                                        text: text
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // Translate new content if found
+                if (newTextNodes.length > 0 && currentApiKey) {
+                    try {
+                        await translateNodes(newTextNodes, currentApiKey, currentSourceLang, currentTargetLang);
+                    } catch (error) {
+                        console.error('Auto-translation error:', error);
+                    }
+                }
+            });
+
+            observer.observe(contentDiv, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        // Stop observing DOM changes
+        function stopContentObserver() {
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
+        }
+
+        // Translate specific nodes
+        async function translateNodes(textNodes, apiKey, sourceLang, targetLang) {
+            if (textNodes.length === 0) return;
+
+            const textsToTranslate = textNodes.map(item => item.text);
+            
+            try {
+                const translations = await translateWithDeepL(apiKey, textsToTranslate, sourceLang, targetLang);
+
+                textNodes.forEach((item, index) => {
+                    if (translations[index]) {
+                        item.node.textContent = translations[index];
+                        // Cache the translation
+                        translationCache.set(item.text, translations[index]);
+                    }
+                });
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        // Main translation function
+        async function translatePage(apiKey, sourceLang, targetLang) {
+            // Collect all text nodes
+            const textNodes = [];
+            const walker = document.createTreeWalker(
+                contentDiv,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: (node) => {
+                        // Skip empty text nodes and whitespace-only nodes
+                        if (node.textContent.trim().length === 0) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+            );
+
+            let node;
+            while (node = walker.nextNode()) {
+                const text = node.textContent.trim();
+                
+                // Check cache first
+                if (translationCache.has(text)) {
+                    node.textContent = translationCache.get(text);
+                } else {
+                    textNodes.push({
+                        node: node,
+                        text: text
+                    });
+                }
+            }
+
+            if (textNodes.length === 0) {
+                return; // All content was cached
+            }
+
+            // Translate uncached content
+            await translateNodes(textNodes, apiKey, sourceLang, targetLang);
+        }
+
+        // DeepL API call function (via Netlify Function)
+        async function translateWithDeepL(apiKey, texts, sourceLang, targetLang) {
+            // Netlify function URL - automatically works for both local and deployed
+            // Deployed: https://your-site.netlify.app/.netlify/functions/translate
+            // Local: http://localhost:8888/.netlify/functions/translate
+            
+            // Get the current origin to build the function URL
+            const origin = window.location.origin;
+            const functionUrl = `${origin}/.netlify/functions/translate`;
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    texts: texts,
+                    sourceLang: sourceLang,
+                    targetLang: targetLang,
+                    apiKey: apiKey
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `API request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.translations.map(t => t.text);
+        }
+    </script>
     
   </body>
 </html>
