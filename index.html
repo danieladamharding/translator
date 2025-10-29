@@ -315,6 +315,7 @@
         let currentApiKey = null;
         let currentSourceLang = null;
         let currentTargetLang = null;
+        let translatedNodes = new Map(); // Store original text for each node
 
         // Get DOM elements
         const apiKeyInput = document.getElementById('api-key');
@@ -323,11 +324,15 @@
         const translateBtn = document.getElementById('translate-btn');
         const resetBtn = document.getElementById('reset-btn');
         const statusSpan = document.getElementById('status');
+        
+        // Target the main content area - use body if no specific content div exists
         const contentDiv = document.getElementById('content') || document.body;
+        const toolbarDiv = document.getElementById('translation-toolbar');
 
         // Save original content on page load
         window.addEventListener('DOMContentLoaded', () => {
-            originalContent = contentDiv.innerHTML;
+            // Don't store HTML, we'll track individual nodes instead
+            originalContent = true;
         });
 
         // Translate button click handler
@@ -370,14 +375,21 @@
         // Reset button click handler
         resetBtn.addEventListener('click', () => {
             if (originalContent) {
-                contentDiv.innerHTML = originalContent;
-                statusSpan.textContent = 'Content restored';
+                // Restore original text for each translated node
+                translatedNodes.forEach((originalText, node) => {
+                    if (node.parentNode) { // Check if node still exists in DOM
+                        node.textContent = originalText;
+                    }
+                });
+                
+                translatedNodes.clear();
                 translationCache.clear();
                 isTranslating = false;
                 
                 // Stop auto-translation
                 stopContentObserver();
                 
+                statusSpan.textContent = 'Content restored';
                 setTimeout(() => statusSpan.textContent = '', 2000);
             }
         });
@@ -396,6 +408,11 @@
                 for (const mutation of mutations) {
                     if (mutation.type === 'childList') {
                         mutation.addedNodes.forEach(node => {
+                            // Skip toolbar
+                            if (toolbarDiv && (node === toolbarDiv || toolbarDiv.contains(node))) {
+                                return;
+                            }
+                            
                             // Find all text nodes in added content
                             if (node.nodeType === Node.ELEMENT_NODE) {
                                 const walker = document.createTreeWalker(
@@ -403,6 +420,9 @@
                                     NodeFilter.SHOW_TEXT,
                                     {
                                         acceptNode: (n) => {
+                                            if (toolbarDiv && toolbarDiv.contains(n)) {
+                                                return NodeFilter.FILTER_REJECT;
+                                            }
                                             if (n.textContent.trim().length === 0) {
                                                 return NodeFilter.FILTER_REJECT;
                                             }
@@ -415,19 +435,52 @@
                                 while (textNode = walker.nextNode()) {
                                     const text = textNode.textContent.trim();
                                     if (text && !translationCache.has(text)) {
+                                        // Store original
+                                        if (!translatedNodes.has(textNode)) {
+                                            translatedNodes.set(textNode, textNode.textContent);
+                                        }
+                                        
                                         newTextNodes.push({
                                             node: textNode,
-                                            text: text
+                                            text: text,
+                                            originalContent: textNode.textContent
                                         });
+                                    } else if (text && translationCache.has(text)) {
+                                        // Apply cached translation
+                                        if (!translatedNodes.has(textNode)) {
+                                            translatedNodes.set(textNode, textNode.textContent);
+                                        }
+                                        const original = textNode.textContent;
+                                        const leadingSpace = original.match(/^\s*/)[0];
+                                        const trailingSpace = original.match(/\s*$/)[0];
+                                        textNode.textContent = leadingSpace + translationCache.get(text) + trailingSpace;
                                     }
                                 }
                             } else if (node.nodeType === Node.TEXT_NODE) {
+                                // Skip if in toolbar
+                                if (toolbarDiv && toolbarDiv.contains(node)) {
+                                    return;
+                                }
+                                
                                 const text = node.textContent.trim();
                                 if (text && !translationCache.has(text)) {
+                                    if (!translatedNodes.has(node)) {
+                                        translatedNodes.set(node, node.textContent);
+                                    }
+                                    
                                     newTextNodes.push({
                                         node: node,
-                                        text: text
+                                        text: text,
+                                        originalContent: node.textContent
                                     });
+                                } else if (text && translationCache.has(text)) {
+                                    if (!translatedNodes.has(node)) {
+                                        translatedNodes.set(node, node.textContent);
+                                    }
+                                    const original = node.textContent;
+                                    const leadingSpace = original.match(/^\s*/)[0];
+                                    const trailingSpace = original.match(/\s*$/)[0];
+                                    node.textContent = leadingSpace + translationCache.get(text) + trailingSpace;
                                 }
                             }
                         });
@@ -469,7 +522,13 @@
 
                 textNodes.forEach((item, index) => {
                     if (translations[index]) {
-                        item.node.textContent = translations[index];
+                        // Preserve leading/trailing whitespace from original
+                        const original = item.originalContent || item.node.textContent;
+                        const leadingSpace = original.match(/^\s*/)[0];
+                        const trailingSpace = original.match(/\s*$/)[0];
+                        
+                        item.node.textContent = leadingSpace + translations[index] + trailingSpace;
+                        
                         // Cache the translation
                         translationCache.set(item.text, translations[index]);
                     }
@@ -481,15 +540,21 @@
 
         // Main translation function
         async function translatePage(apiKey, sourceLang, targetLang) {
-            // Collect all text nodes
+            // Collect all text nodes, excluding the toolbar
             const textNodes = [];
             const walker = document.createTreeWalker(
                 contentDiv,
                 NodeFilter.SHOW_TEXT,
                 {
                     acceptNode: (node) => {
+                        // Skip the toolbar
+                        if (toolbarDiv && toolbarDiv.contains(node)) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        
                         // Skip empty text nodes and whitespace-only nodes
-                        if (node.textContent.trim().length === 0) {
+                        const text = node.textContent.trim();
+                        if (text.length === 0) {
                             return NodeFilter.FILTER_REJECT;
                         }
                         return NodeFilter.FILTER_ACCEPT;
@@ -503,11 +568,21 @@
                 
                 // Check cache first
                 if (translationCache.has(text)) {
+                    // Store original before translating
+                    if (!translatedNodes.has(node)) {
+                        translatedNodes.set(node, node.textContent);
+                    }
                     node.textContent = translationCache.get(text);
                 } else {
+                    // Store original text
+                    if (!translatedNodes.has(node)) {
+                        translatedNodes.set(node, node.textContent);
+                    }
+                    
                     textNodes.push({
                         node: node,
-                        text: text
+                        text: text,
+                        originalContent: node.textContent // Keep spaces
                     });
                 }
             }
