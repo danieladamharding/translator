@@ -323,7 +323,7 @@
         const translateBtn = document.getElementById('translate-btn');
         const resetBtn = document.getElementById('reset-btn');
         const statusSpan = document.getElementById('status');
-        const contentDiv = document.getElementById('content');
+        const contentDiv = document.getElementById('content') || document.body;
 
         // Save original content on page load
         window.addEventListener('DOMContentLoaded', () => {
