@@ -11,6 +11,26 @@
     <script type="text/javascript" src="lib/lzwcompress.js"></script>
 
     <style>
+        :root {
+            --toolbar-bg-start: #667eea;
+            --toolbar-bg-end: #764ba2;
+            --toolbar-text: #ffffff;
+            --toolbar-shadow: rgba(0, 0, 0, 0.1);
+            --button-bg: #ffffff;
+            --button-text: #667eea;
+            --button-hover-shadow: rgba(0, 0, 0, 0.2);
+            --error-color: #ff6b6b;
+            --success-color: #51cf66;
+            --focus-outline: 3px solid #ffd43b;
+            --transition-speed: 0.2s;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --transition-speed: 0.01ms;
+            }
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -18,19 +38,35 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             padding-top: 70px;
         }
 
-        /* Translation Toolbar Styles */
+        /* Skip to content link for accessibility */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--button-bg);
+            color: var(--button-text);
+            padding: 8px;
+            text-decoration: none;
+            z-index: 10000;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* Translation Toolbar */
         #translation-toolbar {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--toolbar-bg-start) 0%, var(--toolbar-bg-end) 100%);
             padding: 12px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px var(--toolbar-shadow);
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -39,7 +75,7 @@
         }
 
         #translation-toolbar label {
-            color: white;
+            color: var(--toolbar-text);
             font-weight: 600;
             font-size: 14px;
         }
@@ -48,31 +84,42 @@
             padding: 8px 12px;
             border: none;
             border-radius: 6px;
-            background: white;
+            background: var(--button-bg);
             cursor: pointer;
             font-size: 14px;
-            min-width: 120px;
+            min-width: 180px;
+            transition: box-shadow var(--transition-speed);
+        }
+
+        #translation-toolbar select:focus {
+            outline: var(--focus-outline);
+            outline-offset: 2px;
         }
 
         #translation-toolbar button {
             padding: 8px 20px;
             border: none;
             border-radius: 6px;
-            background: white;
-            color: #667eea;
+            background: var(--button-bg);
+            color: var(--button-text);
             font-weight: 600;
             cursor: pointer;
             font-size: 14px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
         }
 
-        #translation-toolbar button:hover {
+        #translation-toolbar button:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px var(--button-hover-shadow);
         }
 
-        #translation-toolbar button:active {
+        #translation-toolbar button:active:not(:disabled) {
             transform: translateY(0);
+        }
+
+        #translation-toolbar button:focus {
+            outline: var(--focus-outline);
+            outline-offset: 2px;
         }
 
         #translation-toolbar button:disabled {
@@ -80,21 +127,48 @@
             cursor: not-allowed;
         }
 
+        #translation-toolbar button.loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
         .status-message {
-            color: white;
+            color: var(--toolbar-text);
             font-size: 13px;
             margin-left: auto;
         }
 
-        .api-key-input {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            min-width: 250px;
+        .status-message.error {
+            color: var(--error-color);
+            font-weight: 600;
         }
 
-        /* Demo Content Styles */
+        .status-message.success {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        /* Visually hidden but accessible to screen readers */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Demo Content */
         .demo-content {
             max-width: 800px;
             margin: 40px auto;
@@ -241,9 +315,12 @@
   </head>
   <body>
     <!-- Translation Toolbar -->
-    <div id="translation-toolbar">
+    <div id="translation-toolbar" role="region" aria-label="Translation controls">
         <label for="target-lang">Translate to:</label>
-        <select id="target-lang">
+        <select 
+            id="target-lang" 
+            aria-label="Select target language for translation"
+            aria-describedby="lang-help">
             <option value="EN-GB">English (British)</option>
             <option value="ES">Spanish</option>
             <option value="FR">French</option>
@@ -254,11 +331,29 @@
             <option value="NL">Dutch</option>
             <option value="JA">Japanese</option>
         </select>
+        <span id="lang-help" class="sr-only">Source language will be automatically detected</span>
 
-        <button id="translate-btn">Translate Page</button>
-        <button id="reset-btn">Reset</button>
+        <button 
+            id="translate-btn" 
+            aria-label="Translate page to selected language"
+            aria-describedby="translate-help">
+            Translate Page
+        </button>
+        <span id="translate-help" class="sr-only">Translates all page content and monitors for new content</span>
+
+        <button 
+            id="reset-btn" 
+            aria-label="Reset page to original language">
+            Reset
+        </button>
         
-        <span class="status-message" id="status"></span>
+        <span 
+            class="status-message" 
+            id="status" 
+            role="status" 
+            aria-live="polite" 
+            aria-atomic="true">
+        </span>
     </div>
     
     <div id="app"></div>
@@ -291,394 +386,412 @@
     <script>__loadEntry()</script>
 
     <script>
-        // Store original content and translation state
-        let originalContent = null;
-        let isTranslating = false;
-        let translationCache = new Map();
-        let observer = null;
-        let currentApiKey = null;
-        let currentSourceLang = null;
-        let currentTargetLang = null;
-        let translatedNodes = new Map(); // Store original text for each node
+        // Configuration constants
+        const CONFIG = {
+            MAX_CACHE_SIZE: 1000,
+            DEBOUNCE_DELAY: 300,
+            API_TIMEOUT: 30000,
+            EXCLUDED_ELEMENTS: ['button', 'nav'],
+            EXCLUDED_CLASSES: ['button', 'btn', 'nav', 'menu'],
+            EXCLUDED_IDS: ['nav', 'menu', 'translation-toolbar']
+        };
 
-        // Get DOM elements
-        const apiKeyInput = document.getElementById('api-key');
-        const targetLangSelect = document.getElementById('target-lang');
-        const translateBtn = document.getElementById('translate-btn');
-        const resetBtn = document.getElementById('reset-btn');
-        const statusSpan = document.getElementById('status');
-        
-        // Target the main content area - use body if no specific content div exists
-        const contentDiv = document.getElementById('content') || document.body;
-        const toolbarDiv = document.getElementById('translation-toolbar');
+        // State management
+        const state = {
+            isTranslating: false,
+            translationCache: new Map(),
+            translatedNodes: new Map(),
+            observer: null,
+            currentSourceLang: null,
+            currentTargetLang: null,
+            debounceTimer: null
+        };
 
-        // Save original content on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            // Don't store HTML, we'll track individual nodes instead
-            originalContent = true;
-        });
+        // DOM elements cache
+        const elements = {
+            targetLangSelect: document.getElementById('target-lang'),
+            translateBtn: document.getElementById('translate-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            statusSpan: document.getElementById('status'),
+            contentDiv: document.getElementById('main-content') || document.body,
+            toolbarDiv: document.getElementById('translation-toolbar')
+        };
 
-        // Translate button click handler
-        translateBtn.addEventListener('click', async () => {
-            const apiKey = apiKeyInput.value.trim();
-            
-            if (!apiKey) {
-                statusSpan.textContent = 'Please enter your DeepL API key';
-                return;
-            }
+        // Utility functions
+        const utils = {
+            debounce(func, wait) {
+                return function executedFunction(...args) {
+                    clearTimeout(state.debounceTimer);
+                    state.debounceTimer = setTimeout(() => func(...args), wait);
+                };
+            },
 
-            const targetLang = targetLangSelect.value;
-
-            // Store current settings (source lang is always auto-detect)
-            currentApiKey = apiKey;
-            currentSourceLang = null; // Auto-detect
-            currentTargetLang = targetLang;
-            isTranslating = true;
-
-            // Disable button and show status
-            translateBtn.disabled = true;
-            statusSpan.textContent = 'Translating...';
-
-            try {
-                await translatePage(apiKey, null, targetLang);
-                statusSpan.textContent = 'Translation active - new content will auto-translate';
+            updateStatus(message, type = 'info') {
+                elements.statusSpan.textContent = message;
+                elements.statusSpan.className = `status-message ${type}`;
                 
-                // Start watching for new content
-                startContentObserver();
-            } catch (error) {
-                statusSpan.textContent = `Error: ${error.message}`;
-                console.error('Translation error:', error);
-                isTranslating = false;
-            } finally {
-                translateBtn.disabled = false;
-            }
-        });
+                if (message && type !== 'info') {
+                    setTimeout(() => {
+                        elements.statusSpan.textContent = '';
+                        elements.statusSpan.className = 'status-message';
+                    }, 5000);
+                }
+            },
 
-        // Reset button click handler
-        resetBtn.addEventListener('click', () => {
-            if (originalContent) {
-                // Restore original text for each translated node
-                translatedNodes.forEach((originalText, node) => {
-                    if (node.parentNode) { // Check if node still exists in DOM
-                        node.textContent = originalText;
+            setLoadingState(isLoading) {
+                elements.translateBtn.disabled = isLoading;
+                if (isLoading) {
+                    elements.translateBtn.classList.add('loading');
+                } else {
+                    elements.translateBtn.classList.remove('loading');
+                }
+            },
+
+            shouldSkipElement(node) {
+                if (!node || !node.parentElement) return true;
+                
+                // Skip toolbar
+                if (elements.toolbarDiv && elements.toolbarDiv.contains(node)) {
+                    return true;
+                }
+
+                let parent = node.parentElement;
+                while (parent) {
+                    const tagName = parent.tagName?.toLowerCase() || '';
+                    const className = parent.className || '';
+                    const id = parent.id || '';
+
+                    // Check excluded elements
+                    if (CONFIG.EXCLUDED_ELEMENTS.includes(tagName)) {
+                        return true;
                     }
-                });
-                
-                translatedNodes.clear();
-                translationCache.clear();
-                isTranslating = false;
-                
-                // Stop auto-translation
-                stopContentObserver();
-                
-                statusSpan.textContent = 'Content restored';
-                setTimeout(() => statusSpan.textContent = '', 2000);
+
+                    // Check excluded classes
+                    if (CONFIG.EXCLUDED_CLASSES.some(cls => className.includes(cls))) {
+                        return true;
+                    }
+
+                    // Check excluded IDs
+                    if (CONFIG.EXCLUDED_IDS.some(excludedId => id.includes(excludedId))) {
+                        return true;
+                    }
+
+                    // Skip headers with interactive elements
+                    if (tagName === 'header' && parent.querySelector('button, a[href]')) {
+                        return true;
+                    }
+
+                    parent = parent.parentElement;
+                }
+
+                return false;
+            },
+
+            preserveWhitespace(original, translated) {
+                const leadingSpace = original.match(/^\s*/)[0];
+                const trailingSpace = original.match(/\s*$/)[0];
+                return leadingSpace + translated + trailingSpace;
+            },
+
+            manageCacheSize() {
+                if (state.translationCache.size > CONFIG.MAX_CACHE_SIZE) {
+                    const entriesToDelete = state.translationCache.size - CONFIG.MAX_CACHE_SIZE;
+                    const iterator = state.translationCache.keys();
+                    for (let i = 0; i < entriesToDelete; i++) {
+                        state.translationCache.delete(iterator.next().value);
+                    }
+                }
             }
-        });
+        };
 
-        // Start observing DOM changes
-        function startContentObserver() {
-            if (observer) {
-                observer.disconnect();
+        // Translation API functions
+        const translationAPI = {
+            async translate(texts, sourceLang, targetLang) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT);
+
+                try {
+                    const origin = window.location.origin;
+                    const functionUrl = `${origin}/.netlify/functions/translate`;
+
+                    const response = await fetch(functionUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            texts: texts,
+                            sourceLang: sourceLang,
+                            targetLang: targetLang
+                        }),
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || `Translation failed: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.translations.map(t => t.text);
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    if (error.name === 'AbortError') {
+                        throw new Error('Translation request timed out');
+                    }
+                    throw error;
+                }
             }
+        };
 
-            observer = new MutationObserver(async (mutations) => {
-                if (!isTranslating) return;
-
-                const newTextNodes = [];
-
-                for (const mutation of mutations) {
-                    if (mutation.type === 'childList') {
-                        mutation.addedNodes.forEach(node => {
-                            // Skip toolbar
-                            if (toolbarDiv && (node === toolbarDiv || toolbarDiv.contains(node))) {
-                                return;
+        // Text node collection
+        const nodeCollector = {
+            collectTextNodes(container) {
+                const textNodes = [];
+                const walker = document.createTreeWalker(
+                    container,
+                    NodeFilter.SHOW_TEXT,
+                    {
+                        acceptNode: (node) => {
+                            if (utils.shouldSkipElement(node)) {
+                                return NodeFilter.FILTER_REJECT;
                             }
                             
-                            // Find all text nodes in added content
-                            if (node.nodeType === Node.ELEMENT_NODE) {
-                                const walker = document.createTreeWalker(
-                                    node,
-                                    NodeFilter.SHOW_TEXT,
-                                    {
-                                        acceptNode: (n) => {
-                                            if (toolbarDiv && toolbarDiv.contains(n)) {
-                                                return NodeFilter.FILTER_REJECT;
-                                            }
-                                            
-                                            // Skip buttons, navigation, and interactive elements
-                                            let parent = n.parentElement;
-                                            while (parent) {
-                                                const tagName = parent.tagName.toLowerCase();
-                                                const className = parent.className || '';
-                                                const id = parent.id || '';
-                                                
-                                                if (tagName === 'button' || 
-                                                    tagName === 'nav' ||
-                                                    tagName === 'header' && parent.querySelector('button, a[href]') ||
-                                                    className.includes('button') ||
-                                                    className.includes('btn') ||
-                                                    className.includes('nav') ||
-                                                    className.includes('menu') ||
-                                                    className.includes('header') && parent.querySelector('button, a[href]') ||
-                                                    id.includes('nav') ||
-                                                    id.includes('menu')) {
-                                                    return NodeFilter.FILTER_REJECT;
-                                                }
-                                                parent = parent.parentElement;
-                                            }
-                                            
-                                            if (n.textContent.trim().length === 0) {
-                                                return NodeFilter.FILTER_REJECT;
-                                            }
-                                            return NodeFilter.FILTER_ACCEPT;
-                                        }
-                                    }
-                                );
-
-                                let textNode;
-                                while (textNode = walker.nextNode()) {
-                                    const text = textNode.textContent.trim();
-                                    if (text && !translationCache.has(text)) {
-                                        // Store original
-                                        if (!translatedNodes.has(textNode)) {
-                                            translatedNodes.set(textNode, textNode.textContent);
-                                        }
-                                        
-                                        newTextNodes.push({
-                                            node: textNode,
-                                            text: text,
-                                            originalContent: textNode.textContent
-                                        });
-                                    } else if (text && translationCache.has(text)) {
-                                        // Apply cached translation
-                                        if (!translatedNodes.has(textNode)) {
-                                            translatedNodes.set(textNode, textNode.textContent);
-                                        }
-                                        const original = textNode.textContent;
-                                        const leadingSpace = original.match(/^\s*/)[0];
-                                        const trailingSpace = original.match(/\s*$/)[0];
-                                        textNode.textContent = leadingSpace + translationCache.get(text) + trailingSpace;
-                                    }
-                                }
-                            } else if (node.nodeType === Node.TEXT_NODE) {
-                                // Skip if in toolbar
-                                if (toolbarDiv && toolbarDiv.contains(node)) {
-                                    return;
-                                }
-                                
-                                // Skip if in button or nav
-                                let parent = node.parentElement;
-                                let shouldSkip = false;
-                                while (parent) {
-                                    const tagName = parent.tagName.toLowerCase();
-                                    const className = parent.className || '';
-                                    const id = parent.id || '';
-                                    
-                                    if (tagName === 'button' || 
-                                        tagName === 'nav' ||
-                                        tagName === 'header' && parent.querySelector('button, a[href]') ||
-                                        className.includes('button') ||
-                                        className.includes('btn') ||
-                                        className.includes('nav') ||
-                                        className.includes('menu') ||
-                                        className.includes('header') && parent.querySelector('button, a[href]') ||
-                                        id.includes('nav') ||
-                                        id.includes('menu')) {
-                                        shouldSkip = true;
-                                        break;
-                                    }
-                                    parent = parent.parentElement;
-                                }
-                                
-                                if (shouldSkip) return;
-                                
-                                const text = node.textContent.trim();
-                                if (text && !translationCache.has(text)) {
-                                    if (!translatedNodes.has(node)) {
-                                        translatedNodes.set(node, node.textContent);
-                                    }
-                                    
-                                    newTextNodes.push({
-                                        node: node,
-                                        text: text,
-                                        originalContent: node.textContent
-                                    });
-                                } else if (text && translationCache.has(text)) {
-                                    if (!translatedNodes.has(node)) {
-                                        translatedNodes.set(node, node.textContent);
-                                    }
-                                    const original = node.textContent;
-                                    const leadingSpace = original.match(/^\s*/)[0];
-                                    const trailingSpace = original.match(/\s*$/)[0];
-                                    node.textContent = leadingSpace + translationCache.get(text) + trailingSpace;
-                                }
+                            const text = node.textContent.trim();
+                            if (text.length === 0) {
+                                return NodeFilter.FILTER_REJECT;
                             }
+                            return NodeFilter.FILTER_ACCEPT;
+                        }
+                    }
+                );
+
+                let node;
+                while (node = walker.nextNode()) {
+                    const text = node.textContent.trim();
+                    
+                    // Check cache first
+                    if (state.translationCache.has(text)) {
+                        if (!state.translatedNodes.has(node)) {
+                            state.translatedNodes.set(node, node.textContent);
+                        }
+                        const cached = state.translationCache.get(text);
+                        node.textContent = utils.preserveWhitespace(node.textContent, cached);
+                    } else {
+                        if (!state.translatedNodes.has(node)) {
+                            state.translatedNodes.set(node, node.textContent);
+                        }
+                        
+                        textNodes.push({
+                            node: node,
+                            text: text,
+                            originalContent: node.textContent
                         });
                     }
                 }
 
-                // Translate new content if found
-                if (newTextNodes.length > 0 && currentApiKey) {
-                    try {
-                        await translateNodes(newTextNodes, currentApiKey, currentSourceLang, currentTargetLang);
-                    } catch (error) {
-                        console.error('Auto-translation error:', error);
+                return textNodes;
+            },
+
+            processNewNodes(addedNodes) {
+                const newTextNodes = [];
+
+                for (const node of addedNodes) {
+                    if (utils.shouldSkipElement(node)) {
+                        continue;
+                    }
+
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        const textNodes = this.collectTextNodes(node);
+                        newTextNodes.push(...textNodes);
+                    } else if (node.nodeType === Node.TEXT_NODE) {
+                        const text = node.textContent.trim();
+                        if (text) {
+                            if (!state.translatedNodes.has(node)) {
+                                state.translatedNodes.set(node, node.textContent);
+                            }
+
+                            if (state.translationCache.has(text)) {
+                                const cached = state.translationCache.get(text);
+                                node.textContent = utils.preserveWhitespace(node.textContent, cached);
+                            } else {
+                                newTextNodes.push({
+                                    node: node,
+                                    text: text,
+                                    originalContent: node.textContent
+                                });
+                            }
+                        }
                     }
                 }
-            });
 
-            observer.observe(contentDiv, {
-                childList: true,
-                subtree: true
-            });
-        }
-
-        // Stop observing DOM changes
-        function stopContentObserver() {
-            if (observer) {
-                observer.disconnect();
-                observer = null;
+                return newTextNodes;
             }
-        }
+        };
 
-        // Translate specific nodes
-        async function translateNodes(textNodes, apiKey, sourceLang, targetLang) {
-            if (textNodes.length === 0) return;
+        // Translation operations
+        const translator = {
+            async translateNodes(textNodes, sourceLang, targetLang) {
+                if (textNodes.length === 0) return;
 
-            const textsToTranslate = textNodes.map(item => item.text);
-            
-            try {
-                const translations = await translateWithDeepL(apiKey, textsToTranslate, sourceLang, targetLang);
+                const textsToTranslate = textNodes.map(item => item.text);
+                
+                try {
+                    const translations = await translationAPI.translate(textsToTranslate, sourceLang, targetLang);
 
-                textNodes.forEach((item, index) => {
-                    if (translations[index]) {
-                        // Preserve leading/trailing whitespace from original
-                        const original = item.originalContent || item.node.textContent;
-                        const leadingSpace = original.match(/^\s*/)[0];
-                        const trailingSpace = original.match(/\s*$/)[0];
-                        
-                        item.node.textContent = leadingSpace + translations[index] + trailingSpace;
-                        
-                        // Cache the translation
-                        translationCache.set(item.text, translations[index]);
+                    textNodes.forEach((item, index) => {
+                        if (translations[index]) {
+                            const translated = utils.preserveWhitespace(
+                                item.originalContent || item.node.textContent,
+                                translations[index]
+                            );
+                            item.node.textContent = translated;
+                            
+                            // Cache the translation
+                            state.translationCache.set(item.text, translations[index]);
+                        }
+                    });
+
+                    utils.manageCacheSize();
+                } catch (error) {
+                    throw error;
+                }
+            },
+
+            async translatePage(sourceLang, targetLang) {
+                const textNodes = nodeCollector.collectTextNodes(elements.contentDiv);
+
+                if (textNodes.length === 0) {
+                    return;
+                }
+
+                await this.translateNodes(textNodes, sourceLang, targetLang);
+            }
+        };
+
+        // Mutation observer
+        const contentObserver = {
+            start() {
+                if (state.observer) {
+                    state.observer.disconnect();
+                }
+
+                const debouncedHandler = utils.debounce(async (mutations) => {
+                    if (!state.isTranslating) return;
+
+                    const allAddedNodes = [];
+                    for (const mutation of mutations) {
+                        if (mutation.type === 'childList') {
+                            allAddedNodes.push(...Array.from(mutation.addedNodes));
+                        }
+                    }
+
+                    if (allAddedNodes.length === 0) return;
+
+                    const newTextNodes = nodeCollector.processNewNodes(allAddedNodes);
+
+                    if (newTextNodes.length > 0) {
+                        try {
+                            await translator.translateNodes(
+                                newTextNodes,
+                                state.currentSourceLang,
+                                state.currentTargetLang
+                            );
+                        } catch (error) {
+                            console.error('Auto-translation error:', error);
+                        }
+                    }
+                }, CONFIG.DEBOUNCE_DELAY);
+
+                state.observer = new MutationObserver(debouncedHandler);
+
+                state.observer.observe(elements.contentDiv, {
+                    childList: true,
+                    subtree: true
+                });
+            },
+
+            stop() {
+                if (state.observer) {
+                    state.observer.disconnect();
+                    state.observer = null;
+                }
+            }
+        };
+
+        // Event handlers
+        const eventHandlers = {
+            async handleTranslate() {
+                const targetLang = elements.targetLangSelect.value;
+
+                state.currentSourceLang = null; // Auto-detect
+                state.currentTargetLang = targetLang;
+                state.isTranslating = true;
+
+                utils.setLoadingState(true);
+                utils.updateStatus('Translating', 'info');
+
+                try {
+                    await translator.translatePage(null, targetLang);
+                    utils.updateStatus('Translation active - new content will auto-translate', 'success');
+                    contentObserver.start();
+                } catch (error) {
+                    utils.updateStatus(`Error: ${error.message}`, 'error');
+                    console.error('Translation error:', error);
+                    state.isTranslating = false;
+                } finally {
+                    utils.setLoadingState(false);
+                }
+            },
+
+            handleReset() {
+                // Restore original text for each translated node
+                state.translatedNodes.forEach((originalText, node) => {
+                    if (node.parentNode) {
+                        node.textContent = originalText;
                     }
                 });
-            } catch (error) {
-                throw error;
-            }
-        }
-
-        // Main translation function
-        async function translatePage(apiKey, sourceLang, targetLang) {
-            // Collect all text nodes, excluding the toolbar and UI elements
-            const textNodes = [];
-            const walker = document.createTreeWalker(
-                contentDiv,
-                NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: (node) => {
-                        // Skip the toolbar
-                        if (toolbarDiv && toolbarDiv.contains(node)) {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                        
-                        // Skip buttons, navigation, and interactive elements
-                        let parent = node.parentElement;
-                        while (parent) {
-                            const tagName = parent.tagName.toLowerCase();
-                            const className = parent.className || '';
-                            const id = parent.id || '';
-                            
-                            // Skip common UI elements
-                            if (tagName === 'button' || 
-                                tagName === 'nav' ||
-                                tagName === 'header' && parent.querySelector('button, a[href]') || // Headers with interactive elements
-                                className.includes('button') ||
-                                className.includes('btn') ||
-                                className.includes('nav') ||
-                                className.includes('menu') ||
-                                className.includes('header') && parent.querySelector('button, a[href]') ||
-                                id.includes('nav') ||
-                                id.includes('menu')) {
-                                return NodeFilter.FILTER_REJECT;
-                            }
-                            parent = parent.parentElement;
-                        }
-                        
-                        // Skip empty text nodes and whitespace-only nodes
-                        const text = node.textContent.trim();
-                        if (text.length === 0) {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
-            );
-
-            let node;
-            while (node = walker.nextNode()) {
-                const text = node.textContent.trim();
                 
-                // Check cache first
-                if (translationCache.has(text)) {
-                    // Store original before translating
-                    if (!translatedNodes.has(node)) {
-                        translatedNodes.set(node, node.textContent);
-                    }
-                    node.textContent = translationCache.get(text);
-                } else {
-                    // Store original text
-                    if (!translatedNodes.has(node)) {
-                        translatedNodes.set(node, node.textContent);
-                    }
-                    
-                    textNodes.push({
-                        node: node,
-                        text: text,
-                        originalContent: node.textContent // Keep spaces
-                    });
+                state.translatedNodes.clear();
+                state.translationCache.clear();
+                state.isTranslating = false;
+                
+                contentObserver.stop();
+                
+                utils.updateStatus('Content restored', 'success');
+            }
+        };
+
+        // Initialize
+        function init() {
+            // Add event listeners
+            elements.translateBtn.addEventListener('click', eventHandlers.handleTranslate);
+            elements.resetBtn.addEventListener('click', eventHandlers.handleReset);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Alt+T to translate
+                if (e.altKey && e.key === 't') {
+                    e.preventDefault();
+                    eventHandlers.handleTranslate();
                 }
-            }
-
-            if (textNodes.length === 0) {
-                return; // All content was cached
-            }
-
-            // Translate uncached content
-            await translateNodes(textNodes, apiKey, sourceLang, targetLang);
-        }
-
-        // DeepL API call function (via Netlify Function)
-        async function translateWithDeepL(apiKey, texts, sourceLang, targetLang) {
-            // Netlify function URL - automatically works for both local and deployed
-            // Deployed: https://your-site.netlify.app/.netlify/functions/translate
-            // Local: http://localhost:8888/.netlify/functions/translate
-            
-            // Get the current origin to build the function URL
-            const origin = window.location.origin;
-            const functionUrl = `${origin}/.netlify/functions/translate`;
-
-            const response = await fetch(functionUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    texts: texts,
-                    sourceLang: sourceLang,
-                    targetLang: targetLang,
-                    apiKey: apiKey
-                })
+                // Alt+R to reset
+                if (e.altKey && e.key === 'r') {
+                    e.preventDefault();
+                    eventHandlers.handleReset();
+                }
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `API request failed: ${response.status}`);
-            }
+            console.log('Translation toolbar initialized');
+        }
 
-            const data = await response.json();
-            return data.translations.map(t => t.text);
+        // Start the application
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
         }
     </script>
     
