@@ -93,54 +93,6 @@
             font-size: 14px;
             min-width: 250px;
         }
-
-        /* Demo Content Styles */
-        .demo-content {
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .demo-content h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .demo-content h2 {
-            color: #667eea;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-
-        .demo-content p {
-            line-height: 1.6;
-            color: #555;
-            margin-bottom: 15px;
-        }
-
-        .demo-content ul {
-            margin-left: 20px;
-            margin-bottom: 15px;
-        }
-
-        .demo-content li {
-            line-height: 1.6;
-            color: #555;
-            margin-bottom: 8px;
-        }
-
-        .info-box {
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .info-box p {
-            margin: 0;
-            color: #333;
-        }
     </style>
 
     <!-- Resize Hack -->
@@ -245,31 +197,17 @@
         <label for="api-key">DeepL API Key:</label>
         <input type="password" id="api-key" class="api-key-input" placeholder="Enter your DeepL API key">
         
-        <label for="source-lang">From:</label>
-        <select id="source-lang">
-            <option value="auto">Auto-detect</option>
-            <option value="EN">English</option>
-            <option value="ES">Spanish</option>
-            <option value="FR">French</option>
-            <option value="DE">German</option>
-            <option value="IT">Italian</option>
-            <option value="PT">Portuguese</option>
-            <option value="RU">Russian</option>
-            <option value="JA">Japanese</option>
-            <option value="ZH">Chinese</option>
-        </select>
-
-        <label for="target-lang">To:</label>
+        <label for="target-lang">Translate to:</label>
         <select id="target-lang">
-            <option value="EN-US">English (US)</option>
+            <option value="EN-GB">English (British)</option>
             <option value="ES">Spanish</option>
             <option value="FR">French</option>
             <option value="DE">German</option>
-            <option value="IT">Italian</option>
             <option value="PT-PT">Portuguese</option>
-            <option value="RU">Russian</option>
+            <option value="KO">Korean</option>
+            <option value="ET">Estonian</option>
+            <option value="NL">Dutch</option>
             <option value="JA">Japanese</option>
-            <option value="ZH">Chinese (Simplified)</option>
         </select>
 
         <button id="translate-btn">Translate Page</button>
@@ -277,6 +215,7 @@
         
         <span class="status-message" id="status"></span>
     </div>
+    
     <div id="app"></div>
     <script type="text/javascript">
   (function(root) {
