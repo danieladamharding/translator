@@ -16,7 +16,21 @@ exports.handler = async (event, context) => {
 
     try {
         // Parse request body
-        const { texts, sourceLang, targetLang, apiKey } = JSON.parse(event.body);
+        const { texts, sourceLang, targetLang } = JSON.parse(event.body);
+        
+        // Get API key from environment variable
+        const apiKey = process.env.DEEPL_API_KEY;
+        
+        if (!apiKey) {
+            return {
+                statusCode: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                },
+                body: JSON.stringify({ error: 'API key not configured on server' })
+            };
+        }
 
         // Validate input
         if (!texts || !Array.isArray(texts) || texts.length === 0) {
