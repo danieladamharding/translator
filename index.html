@@ -258,7 +258,6 @@
 
         // Get DOM elements
         const apiKeyInput = document.getElementById('api-key');
-        const sourceLangSelect = document.getElementById('source-lang');
         const targetLangSelect = document.getElementById('target-lang');
         const translateBtn = document.getElementById('translate-btn');
         const resetBtn = document.getElementById('reset-btn');
@@ -283,12 +282,11 @@
                 return;
             }
 
-            const sourceLang = sourceLangSelect.value === 'auto' ? null : sourceLangSelect.value;
             const targetLang = targetLangSelect.value;
 
-            // Store current settings
+            // Store current settings (source lang is always auto-detect)
             currentApiKey = apiKey;
-            currentSourceLang = sourceLang;
+            currentSourceLang = null; // Auto-detect
             currentTargetLang = targetLang;
             isTranslating = true;
 
@@ -297,7 +295,7 @@
             statusSpan.textContent = 'Translating...';
 
             try {
-                await translatePage(apiKey, sourceLang, targetLang);
+                await translatePage(apiKey, null, targetLang);
                 statusSpan.textContent = 'Translation active - new content will auto-translate';
                 
                 // Start watching for new content
@@ -362,6 +360,29 @@
                                             if (toolbarDiv && toolbarDiv.contains(n)) {
                                                 return NodeFilter.FILTER_REJECT;
                                             }
+                                            
+                                            // Skip buttons, navigation, and interactive elements
+                                            let parent = n.parentElement;
+                                            while (parent) {
+                                                const tagName = parent.tagName.toLowerCase();
+                                                const className = parent.className || '';
+                                                const id = parent.id || '';
+                                                
+                                                if (tagName === 'button' || 
+                                                    tagName === 'nav' ||
+                                                    tagName === 'header' && parent.querySelector('button, a[href]') ||
+                                                    className.includes('button') ||
+                                                    className.includes('btn') ||
+                                                    className.includes('nav') ||
+                                                    className.includes('menu') ||
+                                                    className.includes('header') && parent.querySelector('button, a[href]') ||
+                                                    id.includes('nav') ||
+                                                    id.includes('menu')) {
+                                                    return NodeFilter.FILTER_REJECT;
+                                                }
+                                                parent = parent.parentElement;
+                                            }
+                                            
                                             if (n.textContent.trim().length === 0) {
                                                 return NodeFilter.FILTER_REJECT;
                                             }
@@ -400,6 +421,32 @@
                                 if (toolbarDiv && toolbarDiv.contains(node)) {
                                     return;
                                 }
+                                
+                                // Skip if in button or nav
+                                let parent = node.parentElement;
+                                let shouldSkip = false;
+                                while (parent) {
+                                    const tagName = parent.tagName.toLowerCase();
+                                    const className = parent.className || '';
+                                    const id = parent.id || '';
+                                    
+                                    if (tagName === 'button' || 
+                                        tagName === 'nav' ||
+                                        tagName === 'header' && parent.querySelector('button, a[href]') ||
+                                        className.includes('button') ||
+                                        className.includes('btn') ||
+                                        className.includes('nav') ||
+                                        className.includes('menu') ||
+                                        className.includes('header') && parent.querySelector('button, a[href]') ||
+                                        id.includes('nav') ||
+                                        id.includes('menu')) {
+                                        shouldSkip = true;
+                                        break;
+                                    }
+                                    parent = parent.parentElement;
+                                }
+                                
+                                if (shouldSkip) return;
                                 
                                 const text = node.textContent.trim();
                                 if (text && !translationCache.has(text)) {
@@ -479,7 +526,7 @@
 
         // Main translation function
         async function translatePage(apiKey, sourceLang, targetLang) {
-            // Collect all text nodes, excluding the toolbar
+            // Collect all text nodes, excluding the toolbar and UI elements
             const textNodes = [];
             const walker = document.createTreeWalker(
                 contentDiv,
@@ -489,6 +536,29 @@
                         // Skip the toolbar
                         if (toolbarDiv && toolbarDiv.contains(node)) {
                             return NodeFilter.FILTER_REJECT;
+                        }
+                        
+                        // Skip buttons, navigation, and interactive elements
+                        let parent = node.parentElement;
+                        while (parent) {
+                            const tagName = parent.tagName.toLowerCase();
+                            const className = parent.className || '';
+                            const id = parent.id || '';
+                            
+                            // Skip common UI elements
+                            if (tagName === 'button' || 
+                                tagName === 'nav' ||
+                                tagName === 'header' && parent.querySelector('button, a[href]') || // Headers with interactive elements
+                                className.includes('button') ||
+                                className.includes('btn') ||
+                                className.includes('nav') ||
+                                className.includes('menu') ||
+                                className.includes('header') && parent.querySelector('button, a[href]') ||
+                                id.includes('nav') ||
+                                id.includes('menu')) {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            parent = parent.parentElement;
                         }
                         
                         // Skip empty text nodes and whitespace-only nodes
